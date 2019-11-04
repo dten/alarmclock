@@ -1,0 +1,38 @@
+name: CI
+
+on: [push]
+
+jobs:
+  lts:
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        stack: [ 'lts-13.19', 'lts-14.13' ]
+      fail-fast: false
+    name: Stackage ${{ matrix.stack }}
+    container: 'fpco/stack-build-small:${{ matrix.stack }}'
+    steps:
+      - uses: actions/checkout@v1
+      - name: Setup Stack
+        run: |
+          mkdir ~/.stack
+          echo "allow-different-user: true" > ~/.stack/config.yaml
+          stack setup --resolver ${{ matrix.stack }}
+      - name: Build
+        run: stack test --no-run-tests --resolver ${{ matrix.stack }}
+      - name: Test
+        run: stack test --resolver ${{ matrix.stack }}
+
+  nightly:
+    runs-on: ubuntu-18.04
+    name: Stackage nightly
+    steps:
+      - uses: actions/checkout@v1
+      - name: Find latest nightly
+        run: curl -I https://www.stackage.org/nightly | grep -o 'nightly-[0-9-]*' > ~/.nightly_ver
+      - name: Setup Stack
+        run: stack setup --resolver $(cat ~/.nightly_ver)
+      - name: Build
+        run: stack test --no-run-tests --resolver $(cat ~/.nightly_ver)
+      - name: Test
+        run: stack test --resolver $(cat ~/.nightly_ver)
